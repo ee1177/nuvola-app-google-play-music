@@ -62,6 +62,7 @@ WebApp._onInitAppRunner = function(emitter)
 WebApp._onInitWebWorker = function(emitter)
 {
     Nuvola.WebApp._onInitWebWorker.call(this, emitter);
+    this._fixMediaSource(Nuvola.global);
     
     Nuvola.actions.connect("ActionActivated", this);
     this.thumbsUp = undefined;
@@ -73,6 +74,54 @@ WebApp._onInitWebWorker = function(emitter)
         this._onPageReady();
     else
         document.addEventListener("DOMContentLoaded", this._onPageReady.bind(this));
+}
+
+WebApp._fixMediaSource = function(window)
+{
+    if (window.MediaSource == null)
+    {
+        Nuvola.log("MediaSource API not found.");
+        return;
+    }
+    
+    try
+    {
+       var mediaTypes = [
+            'video/webm',
+            'video/webm; codecs="vorbis,vp8"',
+            'audio/mpeg',
+            'audio/mpeg; codecs="flump3dec"',
+            'audio/mpeg; codecs="mp3"'
+        ];
+        for(var i = 0; i < mediaTypes.length; i++)
+        {
+            var mediaType = mediaTypes[i];
+            Nuvola.log("MediaSource.isTypeSupported('{1}') => {2}", mediaType, MediaSource.isTypeSupported(mediaType));
+            var audioObject = new Audio("");
+            Nuvola.log("Audio.canPlayType ('{1}') => {2}", mediaType, audioObject.canPlayType(mediaType));
+        }
+        
+        var isTypeSupportedOrig = MediaSource.isTypeSupported;
+        MediaSource.isTypeSupported = function(mediaType)
+        {
+            Nuvola.log("MediaSource.isTypeSupported called: '{1}' => '{2}'", mediaType, isTypeSupportedOrig(mediaType));
+            // TODO: Add overrides here
+            return isTypeSupportedOrig(mediaType);
+        };
+        
+        var addSourceBufferOrig = MediaSource.prototype.addSourceBuffer;
+        MediaSource.prototype.addSourceBuffer = function(mediaType)
+        {
+            Nuvola.log("MediaSource.addSourceBuffer called: '{1}' => '{2}'", mediaType, isTypeSupportedOrig(mediaType));
+            var result = addSourceBufferOrig.call(this, mediaType);
+            // TODO: Add overrides here
+            return result;
+        };
+    }
+    catch (e)
+    {
+        console.log(e);
+    }
 }
 
 /**
