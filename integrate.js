@@ -62,7 +62,6 @@ WebApp._onInitAppRunner = function(emitter)
 WebApp._onInitWebWorker = function(emitter)
 {
     Nuvola.WebApp._onInitWebWorker.call(this, emitter);
-    this._fixMediaSource(Nuvola.global);
     
     Nuvola.actions.connect("ActionActivated", this);
     this.thumbsUp = undefined;
@@ -83,6 +82,20 @@ WebApp._fixMediaSource = function(window)
         Nuvola.log("MediaSource API not found.");
         return;
     }
+    
+    var origCanPlayType = Audio.prototype.canPlayType;
+    Audio.prototype.canPlayType = function (mediaType)
+    {
+        switch (mediaType)
+        {
+        case 'audio/mpeg':
+            return origCanPlayType('audio/mpeg; codecs="mp3"');
+        case 'video/webm':
+            return origCanPlayType('video/webm; codecs="vorbis,vp8"');
+        default:
+            origCanPlayType(mediaType);
+        }
+    };
     
     try
     {
@@ -387,6 +400,9 @@ WebApp._luckyMix = function()
 {
     return location.hash === "#/now" ? document.querySelector("div[data-type=imfl]") || false : false;
 }
+
+if (Nuvola.global.window !== null)
+    WebApp._fixMediaSource(Nuvola.global);
 
 WebApp.start();
 
